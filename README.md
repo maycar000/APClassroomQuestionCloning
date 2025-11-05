@@ -57,6 +57,7 @@ sudo apt-get install tesseract-ocr
 Run the setup wizard for easy configuration:
 
 ```bash
+cd C:\Users\NAME\Downloads\APClassroomBackup-main\APClassroomBackup-main
 python setup.py
 ```
 
