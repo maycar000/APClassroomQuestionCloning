@@ -62,12 +62,8 @@ python setup.py
 
 The wizard will ask you:
 - Website URL
-- Button selector details
 - Number of clicks
 - Wait time between clicks
-- Output settings
-- Tesseract OCR path (if needed)
-
 ### Option 2: Manual Configuration
 
 Edit `config.py` to customize for your website:
@@ -80,12 +76,6 @@ WEBSITE_URL = "https://your-website.com
 MAX_CLICKS = 10        # Number of questions/pages
 WAIT_TIME = 2          # Seconds between clicks
 ```
-
-### Finding Button Selectors
-
-1. Open your website in Chrome
-2. Right-click the button → **Inspect**
-3. Look at the HTML element
 
 ## Usage
 
