@@ -62,6 +62,47 @@ class APClassroomOCR:
         )
         time.sleep(1.5)
     
+    def clean_text(self, text):
+        """Clean text by removing/replacing problematic characters"""
+        if not text:
+            return text
+            
+        # Replace common problematic Unicode characters
+        replacements = {
+            'â€™': "'",   # Curly apostrophe
+            'â€œ': '"',   # Left double quote
+            'â€': '"',    # Right double quote
+            'â€˜': "'",   # Left single quote
+            'â€¦': '...', # Ellipsis
+            'â€”': '—',   # Em dash
+            'â€“': '–',   # En dash
+            'â€¢': '•',   # Bullet
+            'â€¡': '‡',   # Double dagger
+            'â€°': '‰',   # Per mille
+            'â€¹': '‹',   # Single left-pointing angle quotation
+            'â€º': '›',   # Single right-pointing angle quotation
+            'Ã©': 'é',    # e acute
+            'Ã¨': 'è',    # e grave
+            'Ãª': 'ê',    # e circumflex
+            'Ã±': 'ñ',    # n tilde
+            'Ã³': 'ó',    # o acute
+            'Ã¶': 'ö',    # o umlaut
+            'Ã¼': 'ü',    # u umlaut
+            'Ã¡': 'á',    # a acute
+            'Ã¢': 'â',    # a circumflex
+            'Ã£': 'ã',    # a tilde
+            'Ã¤': 'ä',    # a umlaut
+            'Ã»': 'û',    # u circumflex
+            'Ã»': 'û',    # u circumflex
+            'Ã§': 'ç',    # c cedilla
+        }
+        
+        cleaned_text = text
+        for bad_char, good_char in replacements.items():
+            cleaned_text = cleaned_text.replace(bad_char, good_char)
+        
+        return cleaned_text
+    
     def extract_question_and_answers(self):
         """
         Extract ONLY the currently visible question and answers
@@ -78,8 +119,6 @@ class APClassroomOCR:
                 const allQuestionContainers = document.querySelectorAll('.learnosity-item, [class*="question"], .lrn-assessment-wrapper, .lrn_assessment');
                 let activeContainer = null;
                 
-                console.log("Total containers found:", allQuestionContainers.length);
-                
                 for (let container of allQuestionContainers) {
                     const style = window.getComputedStyle(container);
                     const rect = container.getBoundingClientRect();
@@ -93,16 +132,6 @@ class APClassroomOCR:
                                      rect.top >= 0 &&
                                      rect.top < window.innerHeight;
                     
-                    console.log("Container check:", {
-                        display: style.display,
-                        visibility: style.visibility,
-                        opacity: style.opacity,
-                        width: rect.width,
-                        height: rect.height,
-                        top: rect.top,
-                        isVisible: isVisible
-                    });
-                    
                     if (isVisible) {
                         // Additional check: container should have question content
                         const hasStimulus = container.querySelector('.lrn_stimulus_content');
@@ -110,7 +139,6 @@ class APClassroomOCR:
                         
                         if (hasStimulus || hasRadioInputs) {
                             activeContainer = container;
-                            console.log("Found active container!");
                             break;
                         }
                     }
@@ -197,21 +225,6 @@ class APClassroomOCR:
                     }
                 } else {
                     result.debug.error = "No active container found";
-                    // Debug: log all containers for analysis
-                    result.debug.allContainers = Array.from(allQuestionContainers).map(container => {
-                        const style = window.getComputedStyle(container);
-                        const rect = container.getBoundingClientRect();
-                        return {
-                            classes: container.className,
-                            display: style.display,
-                            visibility: style.visibility,
-                            opacity: style.opacity,
-                            size: `${rect.width}x${rect.height}`,
-                            position: `top: ${rect.top}`,
-                            hasStimulus: !!container.querySelector('.lrn_stimulus_content'),
-                            hasRadio: !!container.querySelector('input[type="radio"]')
-                        };
-                    });
                 }
                 
                 return result;
@@ -233,14 +246,9 @@ class APClassroomOCR:
             
             if 'error' in data['debug']:
                 print(f"   ❌ {data['debug']['error']}")
-                # Log detailed container info for debugging
-                if 'allContainers' in data['debug']:
-                    print(f"   [DEBUG] Container details:")
-                    for i, container in enumerate(data['debug']['allContainers'][:5]):  # Show first 5
-                        print(f"     Container {i}: {container}")
             
             # Validate data with more lenient criteria
-            if not data['question'] or len(data['question']) < 10:  # Reduced from 20 to 10
+            if not data['question'] or len(data['question']) < 10:
                 print(f"   ❌ Question too short or missing")
                 return None
                 
@@ -248,13 +256,17 @@ class APClassroomOCR:
                 print(f"   ❌ Need at least 2 answers (found {len(data['answers'])})")
                 return None
             
-            # Format output
+            # CLEAN THE TEXT HERE - this is the key fix!
+            cleaned_question = self.clean_text(data['question'])
+            cleaned_answers = [self.clean_text(answer) for answer in data['answers']]
+            
+            # Format output with cleaned text
             question_num = data['debug'].get('currentQuestion', 'Unknown')
-            formatted = f"{data['question']}\n\n"
+            formatted = f"{cleaned_question}\n\n"
             
             # Add answers with letters
             letters = ['A', 'B', 'C', 'D', 'E']
-            for idx, ans in enumerate(data['answers'][:5]):
+            for idx, ans in enumerate(cleaned_answers[:5]):
                 formatted += f"{letters[idx]}. {ans}\n"
             
             return formatted
@@ -340,33 +352,9 @@ class APClassroomOCR:
         
         print(f"\n💾 Saved TXT: {output_file}")
     
-    def clean_text(self, text):
-        """Clean text by removing/replacing problematic characters"""
-        # Replace common problematic Unicode characters
-        replacements = {
-            'â€™': "'",   # Curly apostrophe
-            'â€œ': '"',   # Left double quote
-            'â€': '"',    # Right double quote
-            'â€˜': "'",   # Left single quote
-            'â€¦': '...', # Ellipsis
-            'â€”': '—',   # Em dash
-            'â€“': '–',   # En dash
-            'â€¢': '•',   # Bullet
-            'â€¡': '‡',   # Double dagger
-            'â€°': '‰',   # Per mille
-            'â€¹': '‹',   # Single left-pointing angle quotation
-            'â€º': '›',   # Single right-pointing angle quotation
-        }
-        
-        cleaned_text = text
-        for bad_char, good_char in replacements.items():
-            cleaned_text = cleaned_text.replace(bad_char, good_char)
-        
-        return cleaned_text
-    
     def save_results_csv(self, output_file):
         """Save results in CSV format for Blooket import with ALL 5 answers"""
-        with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:  # utf-8-sig for Excel compatibility
+        with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
             
             # Write header row with ALL 5 answers + CorrectAnswer column
@@ -381,7 +369,7 @@ class APClassroomOCR:
                 if len(lines) < 3:
                     continue
                 
-                question = self.clean_text(lines[0].strip())
+                question = lines[0].strip()  # Already cleaned during extraction
                 answers = []
                 
                 # Extract answers (A, B, C, D, E)
@@ -389,12 +377,11 @@ class APClassroomOCR:
                     line = line.strip()
                     if line.startswith(('A.', 'B.', 'C.', 'D.', 'E.')):
                         answer_text = line[2:].strip()  # Remove "A. ", "B. ", etc.
-                        answer_text = self.clean_text(answer_text)  # Clean the answer text
-                        answers.append(answer_text)
+                        answers.append(answer_text)  # Already cleaned during extraction
                 
                 # Ensure we have exactly 5 answer columns (fill empty if needed)
                 while len(answers) < 5:
-                    answers.append("")  # Add empty answers if needed
+                    answers.append("")
                 
                 # Keep only first 5 answers if there are more
                 answers = answers[:5]
