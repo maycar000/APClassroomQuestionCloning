@@ -7,10 +7,9 @@ Automates clicking through website questions/pages, capturing screenshots, and e
 ## Features
 
 - 🖱️ Automatic button clicking to cycle through content
-- 📸 Full-screen screenshot capture
-- 📝 OCR text extraction from screenshots
 - ⚙️ Easy configuration via config file
 - 🔄 Automatic ChromeDriver management
+- 📋 CSV and txt export
 
 ## Prerequisites
 
